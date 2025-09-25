@@ -58,3 +58,10 @@ class changeDepartmentRequest(BaseModel):
 
 class searchRequest(BaseModel):
     query: str
+
+class SearchResponse(BaseModel):
+    doc_id: str
+    chunk_id: str
+    summary: str | None
+    sentences: list[str] | None
+    score: float

@@ -26,7 +26,7 @@ async def send_email(file: UploadFile = File(...), emailAdr: str = Form(...)):
         doc_resp = supabase.table("documents").insert({
             "title": file.filename,
             "department": dept_id,
-            "url": upload_result.get("secure_url"),
+            "url": upload_result.get("public_url"),
             "doc_type": "general",
             "medium": "email",
             "priority": "normal",
@@ -82,7 +82,7 @@ async def send_message(file: UploadFile = File(...), phone: str = Form(...)):
         doc_resp = supabase.table("documents").insert({
             "title": file.filename,
             "department": dept_id,
-            "url": upload_result.get("secure_url"),
+            "url": upload_result.get("public_url"),
             "doc_type": "general",
             "medium": "whatsapp",
             "priority": "normal",

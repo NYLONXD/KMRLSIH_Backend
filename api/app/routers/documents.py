@@ -1,13 +1,15 @@
 import os
 import aiohttp
 import cloudinary.uploader
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 from api.app.config import supabase
-from api.app.schemas.models import URLRequest, SUMMARYRequest, ListDocsRequest, compliancesRequest, searchRequest
+from api.app.schemas.models import URLRequest, SUMMARYRequest, ListDocsRequest, compliancesRequest, searchRequest, SearchResponse
 # from nlpPipelne.ProcessPipeline import process_file
 # from nlpPipelne.stages.EmbedIndex import search
 import json
 from fastapi import Request
+import torch
+from sentence_transformers import SentenceTransformer
 
 router = APIRouter()
 
@@ -38,7 +40,7 @@ async def receive_url(request: URLRequest):
     doc_resp = supabase.table("documents").insert({
         "title": filename,
         "department": dept_id,
-        "url": upload_result.get("secure_url"),
+        "url": upload_result.get("public_url"),
         "medium": "url",
         "priority": request.priority,
     }).execute()
@@ -99,7 +101,7 @@ async def receive_file(
         doc_resp = supabase.table("documents").insert({
             "title": file.filename,
             "department": dept_id,
-            "url": upload_result.get("secure_url"),
+            "url": upload_result.get("public_url"),
             "medium": "direct file",
             "priority": priority,
         }).execute()
@@ -180,8 +182,23 @@ async def compliances(doc_id: str):
         return {"data": response.data}
     return {"error": "No compliances found"}
 
-@router.get("/search")
-async def search_docs(query: str):
-    # results = search(request.query)
-    # return {"results": results}
-    return {"results": query}
+MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+model = SentenceTransformer(MODEL_NAME, device="cuda" if torch.cuda.is_available() else "cpu")
+
+@router.get("/search", response_model=list[SearchResponse])
+async def search(query: str = Query(...), top_k: int = 5):
+    # Embed query
+    with torch.inference_mode():
+        q = model.encode([query], normalize_embeddings=True).tolist()[0]
+
+    # Run pgvector similarity
+    sql = f"""
+        select doc_id, chunk_id, content,
+               1 - (embedding <-> '{q}') as score
+        from document_chunks
+        order by embedding <-> '{q}'
+        limit {top_k};
+    """
+
+    res = supabase.rpc("exec_sql", {"query": sql}).execute()
+    return res.data
