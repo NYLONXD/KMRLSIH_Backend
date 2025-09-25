@@ -4,8 +4,8 @@ import cloudinary.uploader
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from api.app.config import supabase
 from api.app.schemas.models import URLRequest, SUMMARYRequest, ListDocsRequest, compliancesRequest, searchRequest
-from nlpPipelne.ProcessPipeline import process_file
-from nlpPipelne.stages.EmbedIndex import search
+# from nlpPipelne.ProcessPipeline import process_file
+# from nlpPipelne.stages.EmbedIndex import search
 import json
 from fastapi import Request
 
@@ -27,7 +27,7 @@ async def receive_url(request: URLRequest):
             with open(file_location, "wb") as f:
                 f.write(content)
 
-    output = await process_file(file_location)
+    # output = await process_file(file_location)
     upload_result = cloudinary.uploader.upload(content, resource_type="auto")
 
     dept_resp = supabase.table("departments").select("dept_id").eq("name", request.dept_name).execute()
@@ -46,9 +46,13 @@ async def receive_url(request: URLRequest):
 
     if inserted_doc:
         doc_id = inserted_doc["doc_id"]
+        # supabase.table("summaries").insert({
+        #     "doc_id": doc_id,
+        #     "content": output["doc_summary"]
+        # }).execute()
         supabase.table("summaries").insert({
             "doc_id": doc_id,
-            "content": output["doc_summary"]
+            "content": ""
         }).execute()
         supabase.table("transexions").insert({
             "from_user": request.user_id,
@@ -57,10 +61,16 @@ async def receive_url(request: URLRequest):
         }).execute()
 
     os.remove(file_location)
+    # return {
+    #     "document": doc_resp.data,
+    #     "filename": filename,
+    #     "processed": output,
+    #     "cloudinary_url": upload_result.get("secure_url")
+    # }
     return {
         "document": doc_resp.data,
         "filename": filename,
-        "processed": output,
+        "processed": "",
         "cloudinary_url": upload_result.get("secure_url")
     }
 
@@ -77,7 +87,7 @@ async def receive_file(
         f.write(content)
 
     try:
-        output = await process_file(file_location)
+        # output = await process_file(file_location)
 
         dept_resp = supabase.table("departments").select("dept_id").eq("name", dept_name).execute()
         if not dept_resp.data:
@@ -97,9 +107,13 @@ async def receive_file(
 
         if inserted_doc:
             doc_id = inserted_doc["doc_id"]
+            # supabase.table("summaries").insert({
+            #     "doc_id": doc_id,
+            #     "content": output.get("doc_summary", "")
+            # }).execute()
             supabase.table("summaries").insert({
                 "doc_id": doc_id,
-                "content": output.get("doc_summary", "")
+                "content": ""
             }).execute()
             supabase.table("transexions").insert({
                 "from_user": user_id,
@@ -110,10 +124,17 @@ async def receive_file(
     finally:
         os.remove(file_location)
 
+    # return {
+    #     "document": doc_resp.data,
+    #     "filename": file.filename,
+    #     "processed": output,
+    #     "cloudinary_url": upload_result.get("secure_url")
+    # }
+
     return {
         "document": doc_resp.data,
         "filename": file.filename,
-        "processed": output,
+        "processed": "",
         "cloudinary_url": upload_result.get("secure_url")
     }
 
@@ -154,12 +175,13 @@ async def listdocs(request: Request, user_id: str):
 
 @router.get("/compliances")
 async def compliances(request: compliancesRequest):
-    response = supabase.table("compliances").select("*").eq("doc_id", request.doc_id).execute()
+    response = supabase.table("compliance").select("*").eq("doc_id", request.doc_id).execute()
     if response.data:
         return {"data": response.data}
     return {"error": "No compliances found"}
 
 @router.get("/search")
 async def search_docs(request: searchRequest):
-    results = search(request.query)
-    return {"results": results}
+    # results = search(request.query)
+    # return {"results": results}
+    return {"results": request.query}

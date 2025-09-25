@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Form, UploadFile, File
 import os
-from nlpPipelne.ProcessPipeline import process_file
+# from nlpPipelne.ProcessPipeline import process_file
 from api.app.config import supabase
 import cloudinary.uploader
 
@@ -17,7 +17,7 @@ async def send_email(file: UploadFile = File(...), emailAdr: str = Form(...)):
         f.write(content)
 
     try:
-        output = process_file(file_location)
+        # output = process_file(file_location)
         user_id = supabase.table("users").select("id").eq("email", emailAdr).execute().data[0]["id"]
         dept_id = supabase.table("users").select("department").eq("email", emailAdr).execute().data[0]["department"]
 
@@ -35,9 +35,13 @@ async def send_email(file: UploadFile = File(...), emailAdr: str = Form(...)):
 
         if inserted_doc:
             doc_id = inserted_doc["doc_id"]
+            # supabase.table("summaries").insert({
+            #     "doc_id": doc_id,
+            #     "content": output.get("doc_summary", "")
+            # }).execute()
             supabase.table("summaries").insert({
                 "doc_id": doc_id,
-                "content": output.get("doc_summary", "")
+                "content": ""
             }).execute()
             supabase.table("transexions").insert({
                 "from_user": user_id,
@@ -48,10 +52,16 @@ async def send_email(file: UploadFile = File(...), emailAdr: str = Form(...)):
     finally:
         os.remove(file_location)
 
+    # return {
+    #     "document": doc_resp.data,
+    #     "filename": file.filename,
+    #     "processed": output,
+    #     "cloudinary_url": upload_result.get("secure_url")
+    # }
     return {
         "document": doc_resp.data,
         "filename": file.filename,
-        "processed": output,
+        "processed": "",
         "cloudinary_url": upload_result.get("secure_url")
     }
 
@@ -63,7 +73,7 @@ async def send_message(file: UploadFile = File(...), phone: str = Form(...)):
         f.write(content)
 
     try:
-        output = process_file(file_location)
+        # output = process_file(file_location)
         user_id = supabase.table("users").select("id").eq("phone", phone).execute().data[0]["id"]
         dept_id = supabase.table("users").select("department").eq("phone", phone).execute().data[0]["department"]
 
@@ -81,9 +91,13 @@ async def send_message(file: UploadFile = File(...), phone: str = Form(...)):
 
         if inserted_doc:
             doc_id = inserted_doc["doc_id"]
+            # supabase.table("summaries").insert({
+            #     "doc_id": doc_id,
+            #     "content": output.get("doc_summary", "")
+            # }).execute()
             supabase.table("summaries").insert({
                 "doc_id": doc_id,
-                "content": output.get("doc_summary", "")
+                "content": ""
             }).execute()
             supabase.table("transexions").insert({
                 "from_user": user_id,
@@ -94,9 +108,16 @@ async def send_message(file: UploadFile = File(...), phone: str = Form(...)):
     finally:
         os.remove(file_location)
 
+    # return {
+    #     "document": doc_resp.data,
+    #     "filename": file.filename,
+    #     "processed": output,
+    #     "cloudinary_url": upload_result.get("secure_url")
+    # }
+
     return {
         "document": doc_resp.data,
         "filename": file.filename,
-        "processed": output,
+        "processed": "",
         "cloudinary_url": upload_result.get("secure_url")
     }
