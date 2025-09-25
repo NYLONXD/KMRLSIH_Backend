@@ -139,9 +139,9 @@ async def receive_file(
     }
 
 @router.get("/summary")
-async def summary(request: SUMMARYRequest):
+async def summary(doc_id: str):
     response = supabase.table("summaries").select("content") \
-        .eq("doc_id", request.doc_id).execute()
+        .eq("doc_id", doc_id).execute()
     if response.data:
         return {"summary": response.data[0]["content"]}
     return {"error": "No summary found"}
@@ -174,14 +174,14 @@ async def listdocs(request: Request, user_id: str):
     return {"data": response.data, "cached": False}
 
 @router.get("/compliances")
-async def compliances(request: compliancesRequest):
-    response = supabase.table("compliance").select("*").eq("doc_id", request.doc_id).execute()
+async def compliances(doc_id: str):
+    response = supabase.table("compliance").select("*").eq("doc_id", doc_id).execute()
     if response.data:
         return {"data": response.data}
     return {"error": "No compliances found"}
 
 @router.get("/search")
-async def search_docs(request: searchRequest):
+async def search_docs(query: str):
     # results = search(request.query)
     # return {"results": results}
-    return {"results": request.query}
+    return {"results": query}
