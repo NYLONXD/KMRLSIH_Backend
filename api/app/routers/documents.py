@@ -31,6 +31,7 @@ async def receive_url(request: URLRequest):
 
     # output = await process_file(file_location)
     upload_result = cloudinary.uploader.upload(content, resource_type="auto")
+    print(upload_result)
 
     dept_resp = supabase.table("departments").select("dept_id").eq("name", request.dept_name).execute()
     if not dept_resp.data:
@@ -75,7 +76,7 @@ async def receive_url(request: URLRequest):
         "processed": "",
         "cloudinary_url": upload_result.get("secure_url")
     }
-
+    
 @router.post("/file")
 async def receive_file(
     file: UploadFile = File(...),
@@ -85,23 +86,39 @@ async def receive_file(
 ):
     file_location = os.path.join(UPLOAD_DIR, file.filename)
     content = await file.read()
+
+    # Save file locally
     with open(file_location, "wb") as f:
         f.write(content)
 
     try:
-        # output = await process_file(file_location)
-
+        # Get department ID
         dept_resp = supabase.table("departments").select("dept_id").eq("name", dept_name).execute()
         if not dept_resp.data:
             raise HTTPException(status_code=400, detail="Department not found")
         dept_id = dept_resp.data[0]["dept_id"]
 
-        upload_result = cloudinary.uploader.upload(content, resource_type="auto")
+        # Detect file type
+        mime_type, _ = mimetypes.guess_type(file.filename)
+        if mime_type is None:
+            mime_type = "application/octet-stream"  # fallback
 
+        # Determine Cloudinary resource_type
+        if mime_type.startswith("image/"):
+            resource_type = "image"
+        else:
+            resource_type = "raw"  # PDFs, docs, videos, etc.
+
+        # Upload to Cloudinary
+        upload_result = cloudinary.uploader.upload(file_location, resource_type=resource_type)
+        print(upload_result)
+
+        # Insert document into DB
         doc_resp = supabase.table("documents").insert({
             "title": file.filename,
             "department": dept_id,
-            "url": upload_result.get("public_url"),
+            "public_id": upload_result["public_id"],
+            "format": upload_result.get("format"),
             "medium": "direct file",
             "priority": priority,
         }).execute()
@@ -109,10 +126,6 @@ async def receive_file(
 
         if inserted_doc:
             doc_id = inserted_doc["doc_id"]
-            # supabase.table("summaries").insert({
-            #     "doc_id": doc_id,
-            #     "content": output.get("doc_summary", "")
-            # }).execute()
             supabase.table("summaries").insert({
                 "doc_id": doc_id,
                 "content": ""
@@ -126,18 +139,11 @@ async def receive_file(
     finally:
         os.remove(file_location)
 
-    # return {
-    #     "document": doc_resp.data,
-    #     "filename": file.filename,
-    #     "processed": output,
-    #     "cloudinary_url": upload_result.get("secure_url")
-    # }
-
     return {
         "document": doc_resp.data,
         "filename": file.filename,
         "processed": "",
-        "cloudinary_url": upload_result.get("secure_url")
+        "cloudinary_url": upload_reesult.get("secure_url")  # safe for frontend
     }
 
 @router.get("/summary")

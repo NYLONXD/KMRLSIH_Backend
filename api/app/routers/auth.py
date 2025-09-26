@@ -12,7 +12,7 @@ async def register(request: RegisterRequest):
     if response.data:
         raise HTTPException(status_code=400, detail="User already exists")
 
-    hashed_password = hash_password(request.password)
+    hashed_password = request.password
 
     dept_resp = supabase.table("departments").select("dept_id").eq("name", request.department).execute()
     if not dept_resp.data:
@@ -47,7 +47,7 @@ async def login(request: LoginRequest):
         user = response.data[0]
 
         # Successful login
-        if verify_password(request.password, user["password"]):
+        if request.password == user["password"]:
             return {"success": True, "message": "Login successful", "user": user}
         else:
             raise HTTPException(status_code=401, detail="Invalid credentials")
