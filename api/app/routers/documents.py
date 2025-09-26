@@ -10,6 +10,7 @@ import json
 from fastapi import Request
 import torch
 from sentence_transformers import SentenceTransformer
+import mimetypes
 
 router = APIRouter()
 
@@ -41,7 +42,7 @@ async def receive_url(request: URLRequest):
     doc_resp = supabase.table("documents").insert({
         "title": filename,
         "department": dept_id,
-        "url": upload_result.get("public_url"),
+        "url": upload_result.get("secure_url"),
         "medium": "url",
         "priority": request.priority,
     }).execute()
@@ -110,15 +111,14 @@ async def receive_file(
             resource_type = "raw"  # PDFs, docs, videos, etc.
 
         # Upload to Cloudinary
-        upload_result = cloudinary.uploader.upload(file_location, resource_type=resource_type)
+        upload_result = cloudinary.uploader.upload(content, resource_type=resource_type)
         print(upload_result)
 
         # Insert document into DB
         doc_resp = supabase.table("documents").insert({
             "title": file.filename,
             "department": dept_id,
-            "public_id": upload_result["public_id"],
-            "format": upload_result.get("format"),
+            "url": upload_result["secure_url"],
             "medium": "direct file",
             "priority": priority,
         }).execute()
@@ -143,7 +143,7 @@ async def receive_file(
         "document": doc_resp.data,
         "filename": file.filename,
         "processed": "",
-        "cloudinary_url": upload_reesult.get("secure_url")  # safe for frontend
+        "cloudinary_url": upload_result.get("secure_url")  # safe for frontend
     }
 
 @router.get("/summary")
@@ -208,3 +208,13 @@ async def search(query: str = Query(...), top_k: int = 5):
 
     res = supabase.rpc("exec_sql", {"query": sql}).execute()
     return res.data
+
+@router.post("/compliances")
+async def add_compliances(request: compliancesRequest):
+    response = supabase.table("compliance").insert({
+        "doc_id": request.doc_id,
+        "section": request.section,
+        "content": request.content,
+        "priority": request.priority
+    }).execute()
+    return {"success": True, "message": response.data}
